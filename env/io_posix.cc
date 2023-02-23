@@ -1443,15 +1443,16 @@ void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
 #ifdef OS_LINUX
 // Suppress Valgrind "Unimplemented functionality" error.
 #ifndef ROCKSDB_VALGRIND_RUN
-  if (hint == write_hint_) {
-    return;
-  }
   if (hint == Env::WriteLifeTimeHint::WLTH_MEDIUM_EXCLUSIVE) {
       fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
       hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
   } else if (hint == Env::WriteLifeTimeHint::WLTH_SHORT_EXCLUSIVE) {
       fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
       hint = Env::WriteLifeTimeHint::WLTH_SHORT;
+  }
+
+  if (hint == write_hint_) {
+    return;
   }
 
   if (fcntl(fd_, F_SET_RW_HINT, &hint) == 0) {
