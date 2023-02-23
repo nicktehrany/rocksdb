@@ -1405,7 +1405,7 @@ Env::WriteLifeTimeHint ColumnFamilyData::CalculateSSTWriteHint(int level) {
     return Env::WLTH_NOT_SET;
   }
   if (level == 0) {
-    return Env::WLTH_MEDIUM;
+    return Env::WLTH_MEDIUM_EXCLUSIVE;
   }
   int base_level = current_->storage_info()->base_level();
 

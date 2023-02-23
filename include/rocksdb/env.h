@@ -263,6 +263,8 @@ class Env : public Customizable {
     WLTH_MEDIUM,       // Data written has a medium life time
     WLTH_LONG,         // Data written has a long life time
     WLTH_EXTREME,      // Data written has an extremely long life time
+    WLTH_SHORT_EXCLUSIVE, // For WAL we set this to request exclusive stream
+    WLTH_MEDIUM_EXCLUSIVE, // For L0 we set this to request exclusive stream
   };
 
   // Create an object that writes to a new file with the specified

@@ -43,6 +43,12 @@
 #define F_SET_RW_HINT (F_LINUX_SPECIFIC_BASE + 12)
 #endif
 
+#if defined(OS_LINUX) && !defined(F_SET_EXCLUSIVE_DATA_STREAM)
+#define F_LINUX_SPECIFIC_BASE 1024
+#define F_SET_EXCLUSIVE_DATA_STREAM (F_LINUX_SPECIFIC_BASE + 15)
+#define F_UNSET_EXCLUSIVE_DATA_STREAM (F_LINUX_SPECIFIC_BASE + 16)
+#endif
+
 namespace ROCKSDB_NAMESPACE {
 
 std::string IOErrorMsg(const std::string& context,
@@ -1380,6 +1386,11 @@ IOStatus PosixWritableFile::Close(const IOOptions& /*opts*/,
 #endif
   }
 
+  /* simply unset, even if it was not enabled */
+  if (fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM) != 0) {
+    s = IOError("While unsetting exclusive data stream after writing", filename_, errno);
+  }
+
   if (close(fd_) < 0) {
     s = IOError("While closing file after writing", filename_, errno);
   }
@@ -1435,6 +1446,14 @@ void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
   if (hint == write_hint_) {
     return;
   }
+  if (hint == Env::WriteLifeTimeHint::WLTH_MEDIUM_EXCLUSIVE) {
+      fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
+      hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
+  } else if (hint == Env::WriteLifeTimeHint::WLTH_SHORT_EXCLUSIVE) {
+      fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
+      hint = Env::WriteLifeTimeHint::WLTH_SHORT;
+  }
+
   if (fcntl(fd_, F_SET_RW_HINT, &hint) == 0) {
     write_hint_ = hint;
   }
