@@ -1405,18 +1405,35 @@ Env::WriteLifeTimeHint ColumnFamilyData::CalculateSSTWriteHint(int level) {
     return Env::WLTH_NOT_SET;
   }
   if (level == 0) {
-    return Env::WLTH_MEDIUM_EXCLUSIVE;
+    return Env::WLTH_MEDIUM_S2; /* L0 on hot data stream 2 */
   }
   int base_level = current_->storage_info()->base_level();
+  int num_files = current_->storage_info()->NumLevelFiles(level);
 
   // L1: medium, L2: long, ...
   if (level - base_level >= 2) {
-    return Env::WLTH_EXTREME;
+      /* we have 4 cold data streams */
+      int stream = num_files % 4; 
+      if (stream == 0) {
+          return Env::WLTH_EXTREME_S0;
+      } else if (stream == 1) {
+          return Env::WLTH_EXTREME_S1;
+      } else if (stream == 2) {
+          return Env::WLTH_EXTREME_S2;
+      } else {
+          return Env::WLTH_EXTREME_S3;
+      }
   } else if (level < base_level) {
-    // There is no restriction which prevents level passed in to be smaller
-    // than base_level.
-    return Env::WLTH_MEDIUM;
+      /* we have 3 warm data streams but L0 takes stream 3 */
+      int stream = num_files % 3; 
+      if (stream == 0) {
+          return Env::WLTH_MEDIUM_S0;
+      } else {
+          return Env::WLTH_MEDIUM_S1;
+      }
   }
+
+  /* Otherwise allocate on stream 0 */
   return static_cast<Env::WriteLifeTimeHint>(level - base_level +
                             static_cast<int>(Env::WLTH_MEDIUM));
 }

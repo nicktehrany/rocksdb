@@ -43,10 +43,9 @@
 #define F_SET_RW_HINT (F_LINUX_SPECIFIC_BASE + 12)
 #endif
 
-#if defined(OS_LINUX) && !defined(F_SET_EXCLUSIVE_DATA_STREAM)
+#if defined(OS_LINUX) && !defined(F_SET_DATA_STREAM_MAP)
 #define F_LINUX_SPECIFIC_BASE 1024
-#define F_SET_EXCLUSIVE_DATA_STREAM (F_LINUX_SPECIFIC_BASE + 15)
-#define F_UNSET_EXCLUSIVE_DATA_STREAM (F_LINUX_SPECIFIC_BASE + 16)
+#define F_SET_DATA_STREAM_MAP (F_LINUX_SPECIFIC_BASE + 17)
 #endif
 
 namespace ROCKSDB_NAMESPACE {
@@ -1386,11 +1385,6 @@ IOStatus PosixWritableFile::Close(const IOOptions& /*opts*/,
 #endif
   }
 
-  /* simply unset, even if it was not enabled */
-  if (fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM) != 0) {
-    s = IOError("While unsetting exclusive data stream after writing", filename_, errno);
-  }
-
   if (close(fd_) < 0) {
     s = IOError("While closing file after writing", filename_, errno);
   }
@@ -1443,15 +1437,51 @@ void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
 #ifdef OS_LINUX
 // Suppress Valgrind "Unimplemented functionality" error.
 #ifndef ROCKSDB_VALGRIND_RUN
+    unsigned long *streammap = 0;
+
+    if (hint > Env::WriteLifeTimeHint::WLTH_EXTREME) {
+        switch (hint) {
+            case (Env:WriteLifeTimeHint::WLTH_SHORT_S0):
+                      *streammap |= (1 << 0);
+                      hint = Env::WriteLifeTimeHint::WLTH_SHORT;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_SHORT_S1):
+                      *streammap |= (1 << 1);
+                      hint = Env::WriteLifeTimeHint::WLTH_SHORT;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_MEDIUM_S0):
+                      *streammap |= (1 << 0);
+                      hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_MEDIUM_S1):
+                      *streammap |= (1 << 1);
+                      hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_MEDIUM_S2):
+                      *streammap |= (1 << 2);
+                      hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_EXTREME_S0):
+                      *streammap |= (1 << 0);
+                      hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
+                      break;
+            case (Env:WriteLifeTimeHint::WLTH_EXTREME_S1):
+                      *streammap |= (1 << 1);
+                      hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
+            case (Env:WriteLifeTimeHint::WLTH_EXTREME_S2):
+                      *streammap |= (1 << 2);
+                      hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
+            case (Env:WriteLifeTimeHint::WLTH_EXTREME_S3):
+                      *streammap |= (1 << 3);
+                      hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
+        }
+
+        // if it fails block allocations will fall to stream 0
+        fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM, streammap);
+    }
+
   if (hint == write_hint_) {
     return;
-  }
-  if (hint == Env::WriteLifeTimeHint::WLTH_MEDIUM_EXCLUSIVE) {
-      fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
-      hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
-  } else if (hint == Env::WriteLifeTimeHint::WLTH_SHORT_EXCLUSIVE) {
-      fcntl(fd_, F_SET_EXCLUSIVE_DATA_STREAM);
-      hint = Env::WriteLifeTimeHint::WLTH_SHORT;
   }
 
   if (fcntl(fd_, F_SET_RW_HINT, &hint) == 0) {
