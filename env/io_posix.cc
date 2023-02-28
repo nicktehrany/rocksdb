@@ -1386,11 +1386,6 @@ IOStatus PosixWritableFile::Close(const IOOptions& /*opts*/,
 #endif
   }
 
-  /* simply unset, even if it was not enabled */
-  if (fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM) != 0) {
-    s = IOError("While unsetting exclusive data stream after writing", filename_, errno);
-  }
-
   if (close(fd_) < 0) {
     s = IOError("While closing file after writing", filename_, errno);
   }
@@ -1516,6 +1511,18 @@ IOStatus PosixWritableFile::RangeSync(uint64_t offset, uint64_t nbytes,
   assert(nbytes <= static_cast<uint64_t>(std::numeric_limits<off_t>::max()));
   if (sync_file_range_supported_) {
     int ret;
+
+    /* simply unset, even if it was not enabled 
+     *
+     * We have to unset the stream before the last block allocation. Unsetting
+     * here results in the exclusive stream being released and possibly other blocks
+     * being mapped to this stream. However, with async I/O it becomes difficult to
+     * unset the exclusive stream at the right time. Worst case another file takes
+     * stream as exclusive, causing stream migration for this file.
+     *
+     * If it fails simply ignore */
+    fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
+
     if (strict_bytes_per_sync_) {
       // Specifying `SYNC_FILE_RANGE_WAIT_BEFORE` together with an offset/length
       // that spans all bytes written so far tells `sync_file_range` to wait for
