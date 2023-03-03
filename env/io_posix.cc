@@ -1437,44 +1437,45 @@ void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
 #ifdef OS_LINUX
 // Suppress Valgrind "Unimplemented functionality" error.
 #ifndef ROCKSDB_VALGRIND_RUN
-    unsigned long streammap = 0;
+    unsigned long *streammap = 0;
+    streammap = (unsigned long *)calloc(sizeof( unsigned long ), sizeof(char *));
 
     if (hint > Env::WriteLifeTimeHint::WLTH_EXTREME) {
         switch (hint) {
             case (Env::WriteLifeTimeHint::WLTH_SHORT_S0):
-                      streammap |= (1 << 0);
+                      *streammap |= (1 << 0);
                       hint = Env::WriteLifeTimeHint::WLTH_SHORT;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_SHORT_S1):
-                      streammap |= (1 << 1);
+                      *streammap |= (1 << 1);
                       hint = Env::WriteLifeTimeHint::WLTH_SHORT;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_MEDIUM_S0):
-                      streammap |= (1 << 0);
+                      *streammap |= (1 << 0);
                       hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_MEDIUM_S1):
-                      streammap |= (1 << 1);
+                      *streammap |= (1 << 1);
                       hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_MEDIUM_S2):
-                      streammap |= (1 << 2);
+                      *streammap |= (1 << 2);
                       hint = Env::WriteLifeTimeHint::WLTH_MEDIUM;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_EXTREME_S0):
-                      streammap |= (1 << 0);
+                      *streammap |= (1 << 0);
                       hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_EXTREME_S1):
-                      streammap |= (1 << 1);
+                      *streammap |= (1 << 1);
                       hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_EXTREME_S2):
-                      streammap |= (1 << 2);
+                      *streammap |= (1 << 2);
                       hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
                       break;
             case (Env::WriteLifeTimeHint::WLTH_EXTREME_S3):
-                      streammap |= (1 << 3);
+                      *streammap |= (1 << 3);
                       hint = Env::WriteLifeTimeHint::WLTH_EXTREME;
                       break;
             default:
@@ -1483,6 +1484,7 @@ void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
 
         // if it fails block allocations will fall to stream 0
         fcntl(fd_, F_SET_DATA_STREAM_MAP, streammap);
+        free(streammap);
     }
 
   if (hint == write_hint_) {
