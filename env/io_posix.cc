@@ -182,6 +182,10 @@ bool IsSyncFileRangeSupported(int fd) {
     // ("Function not implemented").
     return false;
   }
+
+  /* simply unset, even if it was not enabled */
+  fcntl(fd, F_UNSET_EXCLUSIVE_DATA_STREAM);
+
   // None of the known cases matched, so allow `sync_file_range` use.
   return true;
 }
@@ -1186,7 +1190,8 @@ IOStatus PosixMmapFile::Sync(const IOOptions& /*opts*/,
     return IOError("While fdatasync mmapped file", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
-
+  /* Simply unset exclusive stream - ignore if fails */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return Msync();
 }
 
@@ -1204,7 +1209,8 @@ IOStatus PosixMmapFile::Fsync(const IOOptions& /*opts*/,
     return IOError("While fsync mmaped file", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
-
+  /* Simply unset exclusive stream - ignore if fails */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return Msync();
 }
 
