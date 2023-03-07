@@ -1406,29 +1406,27 @@ Env::WriteLifeTimeHint ColumnFamilyData::CalculateSSTWriteHint(int level) {
   }
   if (level == 0) {
     return Env::WLTH_MEDIUM_S2; /* L0 on warm data stream 2 */
-  } else if (level == 1) {
-      return Env::WLTH_MEDIUM_S0; /* L1 on warm data stream 0 */
-  } else if (level == 2) {
-      return Env::WLTH_MEDIUM_S1; /* L2 on warm data stream 1 */
-  } else if (level == 3) {
-      return Env::WLTH_EXTREME_S1; /* L3 on cold data stream 1 */
-  } else if (level == 4) {
-      return Env::WLTH_EXTREME_S2; /* L4 on cold data stream 2 */
-  } else if (level == 5) {
-      return Env::WLTH_EXTREME_S3; /* L5 on cold data stream 3 */
-  } else if (level == 6) {
-      /* F2FS GC goes to stream 0 - mix it with coldes L6 Files */
-      return Env::WLTH_EXTREME_S0; /* L6 on cold data stream 0 */
-  }
+  } 
   int base_level = current_->storage_info()->base_level();
 
   // L1: medium, L2: long, ...
   if (level - base_level >= 2) {
-      /* we have 4 cold data streams and up to L6 */
-      return Env::WLTH_EXTREME_S3;
+      if (level == 3) {
+          return Env::WLTH_EXTREME_S1; /* L3 on cold data stream 1 */
+      } else if (level == 4) {
+          return Env::WLTH_EXTREME_S2; /* L4 on cold data stream 2 */
+      } else if (level == 5) {
+          return Env::WLTH_EXTREME_S3; /* L5 on cold data stream 3 */
+      } else {
+          /* F2FS GC goes to stream 0 - mix it with coldes L6 Files */
+          return Env::WLTH_EXTREME_S0; /* L6 on cold data stream 0 */
+      }
   } else if (level < base_level) {
-      /* we have 3 warm data streams but L0 takes stream 2 */
-      return Env::WLTH_MEDIUM_S1;
+      if (level == 1) {
+          return Env::WLTH_MEDIUM_S0; /* L1 on warm data stream 0 */
+      } else {
+          return Env::WLTH_MEDIUM_S1; /* L2 on warm data stream 1 */
+      } 
   }
 
   /* Otherwise allocate on stream 0 */
