@@ -1162,6 +1162,10 @@ IOStatus PosixMmapFile::Close(const IOOptions& /*opts*/,
     }
   }
 
+  if (fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM) < 0) {
+      s = IOError("While releasing exclusive stream file", filename_, errno);
+  }
+
   if (close(fd_) < 0) {
     if (s.ok()) {
       s = IOError("While closing mmapped file", filename_, errno);
@@ -1392,6 +1396,10 @@ IOStatus PosixWritableFile::Close(const IOOptions& /*opts*/,
 #endif
   }
 
+  if (fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM) < 0) {
+      s = IOError("While releasing exclusive stream file", filename_, errno);
+  }
+
   if (close(fd_) < 0) {
     s = IOError("While closing file after writing", filename_, errno);
   }
@@ -1416,6 +1424,8 @@ IOStatus PosixWritableFile::Sync(const IOOptions& /*opts*/,
     return IOError("While fdatasync", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
+  /* ensure unsetting happens at some point before last block allocation */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return IOStatus::OK();
 }
 
@@ -1430,6 +1440,8 @@ IOStatus PosixWritableFile::Fsync(const IOOptions& /*opts*/,
     return IOError("While fsync", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
+  /* ensure unsetting happens at some point before last block allocation */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return IOStatus::OK();
 }
 
@@ -1621,6 +1633,8 @@ IOStatus PosixRandomRWFile::Sync(const IOOptions& /*opts*/,
     return IOError("While fdatasync random read/write file", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
+  /* ensure unsetting happens at some point before last block allocation */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return IOStatus::OK();
 }
 
@@ -1635,11 +1649,16 @@ IOStatus PosixRandomRWFile::Fsync(const IOOptions& /*opts*/,
     return IOError("While fsync random read/write file", filename_, errno);
   }
 #endif  // HAVE_FULLFSYNC
+  /* ensure unsetting happens at some point before last block allocation */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
   return IOStatus::OK();
 }
 
 IOStatus PosixRandomRWFile::Close(const IOOptions& /*opts*/,
                                   IODebugContext* /*dbg*/) {
+  /* ensure unsetting happens at some point before last block allocation */
+  fcntl(fd_, F_UNSET_EXCLUSIVE_DATA_STREAM);
+
   if (close(fd_) < 0) {
     return IOError("While close random read/write file", filename_, errno);
   }
